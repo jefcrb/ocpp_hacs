@@ -1,4 +1,5 @@
 """Additional enumerated values to use in home assistant."""
+
 from enum import Enum, Flag, auto
 
 
@@ -53,6 +54,31 @@ class HAChargerDetails(str, Enum):
 
 class HAChargerSession(str, Enum):
     """Charger session information to report in home assistant."""
+
+    transaction_id = "Transaction.Id"
+    session_time = "Time.Session"  # in min
+    session_energy = "Energy.Session"  # in kWh
+    meter_start = "Energy.Meter.Start"  # in kWh
+
+
+class HAConnectorStatuses(str, Enum):
+    """Connector status conditions to report in home assistant."""
+
+    status = "Status"
+    status_connector = "Status.Connector"
+    heartbeat = "Heartbeat"
+    latency_ping = "Latency.Ping"
+    latency_pong = "Latency.Pong"
+    error_code = "Error.Code"
+    error_code_connector = "Error.Code.Connector"
+    stop_reason = "Stop.Reason"
+    firmware_status = "Status.Firmware"
+    reconnects = "Reconnects"
+    id_tag = "Id.Tag"
+
+
+class HAConnectorSession(str, Enum):
+    """Connector session information to report in home assistant."""
 
     transaction_id = "Transaction.Id"
     session_time = "Time.Session"  # in min

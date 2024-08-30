@@ -1,8 +1,10 @@
 """Adds config flow for ocpp."""
+
 from homeassistant import config_entries
 import voluptuous as vol
 
 from .const import (
+    CONF_CONN_NAME,
     CONF_CPID,
     CONF_CSID,
     CONF_FORCE_SMART_CHARGING,
@@ -12,6 +14,7 @@ from .const import (
     CONF_METER_INTERVAL,
     CONF_MONITORED_VARIABLES,
     CONF_PORT,
+    CONF_NO_OF_CONNECTORS,
     CONF_SKIP_SCHEMA_VALIDATION,
     CONF_SSL,
     CONF_SSL_CERTFILE_PATH,
@@ -20,6 +23,7 @@ from .const import (
     CONF_WEBSOCKET_PING_INTERVAL,
     CONF_WEBSOCKET_PING_TIMEOUT,
     CONF_WEBSOCKET_PING_TRIES,
+    DEFAULT_CONN_NAME,
     DEFAULT_CPID,
     DEFAULT_CSID,
     DEFAULT_FORCE_SMART_CHARGING,
@@ -28,6 +32,7 @@ from .const import (
     DEFAULT_MAX_CURRENT,
     DEFAULT_METER_INTERVAL,
     DEFAULT_MONITORED_VARIABLES,
+    DEFAULT_NO_OF_CONNECTORS,
     DEFAULT_PORT,
     DEFAULT_SKIP_SCHEMA_VALIDATION,
     DEFAULT_SSL,
@@ -42,6 +47,8 @@ from .const import (
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
+        vol.Required(CONF_CONN_NAME, default=DEFAULT_CONN_NAME): str,
+        vol.Required(CONF_NO_OF_CONNECTORS, default=DEFAULT_NO_OF_CONNECTORS): int,
         vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
         vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
         vol.Required(CONF_SSL, default=DEFAULT_SSL): bool,

@@ -1,4 +1,5 @@
 """Sensor platform for ocpp."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,15 +20,29 @@ from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 
 from .api import CentralSystem
 from .const import (
+    CONF_CONN_NAME,
     CONF_CPID,
+    CONF_NO_OF_CONNECTORS,
     DATA_UPDATED,
+    DEFAULT_CONN_NAME,
     DEFAULT_CLASS_UNITS_HA,
     DEFAULT_CPID,
+    DEFAULT_NO_OF_CONNECTORS,
     DOMAIN,
     ICON,
     Measurand,
+    CONNECTOR_SENSORS,
 )
-from .enums import HAChargerDetails, HAChargerSession, HAChargerStatuses
+from .enums import (
+    HAChargerDetails,
+    HAChargerSession,
+    HAChargerStatuses,
+    HAConnectorSession,
+    HAConnectorStatuses,
+)
+import logging
+
+_LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
 @dataclass
@@ -41,6 +56,11 @@ async def async_setup_entry(hass, entry, async_add_devices):
     """Configure the sensor platform."""
     central_system = hass.data[DOMAIN][entry.entry_id]
     cp_id = entry.data.get(CONF_CPID, DEFAULT_CPID)
+    conn_prefix = entry.data.get(CONF_CONN_NAME, DEFAULT_CONN_NAME)
+    number_of_connectors = entry.data.get(
+        CONF_NO_OF_CONNECTORS, DEFAULT_NO_OF_CONNECTORS
+    )
+
     entities = []
     SENSORS = []
     for metric in list(
@@ -63,7 +83,21 @@ async def async_setup_entry(hass, entry, async_add_devices):
             )
         )
 
+    _LOGGER.info("SENSORS:")
+    _LOGGER.info(SENSORS)
     for ent in SENSORS:
+        if (
+            ent.metric in CONNECTOR_SENSORS
+            or ent.metric in list(HAConnectorSession)
+            or ent.metric in list(HAConnectorStatuses)
+        ):
+            for conn_no in range(1, number_of_connectors + 1):
+                _LOGGER.info(f"Creating sensor for conn {ent.metric} {conn_no}")
+                entities.append(
+                    ChargePointMetric(
+                        hass, central_system, cp_id, ent, f"{conn_prefix}_{conn_no}"
+                    )
+                )
         entities.append(
             ChargePointMetric(
                 hass,
@@ -88,19 +122,23 @@ class ChargePointMetric(RestoreSensor, SensorEntity):
         central_system: CentralSystem,
         cp_id: str,
         description: OcppSensorDescription,
+        connector: str = None,
     ):
         """Instantiate instance of a ChargePointMetrics."""
         self.central_system = central_system
         self.cp_id = cp_id
         self.entity_description = description
         self.metric = self.entity_description.metric
+        self.connector = connector
+        if self.connector is None:
+            self.connector = self.cp_id
         self._hass = hass
         self._extra_attr = {}
         self._last_reset = homeassistant.util.dt.utc_from_timestamp(0)
         self._attr_unique_id = ".".join(
-            [DOMAIN, self.cp_id, self.entity_description.key, SENSOR_DOMAIN]
+            [DOMAIN, self.connector, self.entity_description.key, SENSOR_DOMAIN]
         )
-        self._attr_name = self.entity_description.name
+        self._attr_name = f"{self.entity_description.name}_{self.connector}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self.cp_id)},
             via_device=(DOMAIN, self.central_system.id),
@@ -111,7 +149,7 @@ class ChargePointMetric(RestoreSensor, SensorEntity):
     @property
     def available(self) -> bool:
         """Return if sensor is available."""
-        return self.central_system.get_available(self.cp_id)
+        return self.central_system.get_available(self.connector)
 
     @property
     def should_poll(self):
@@ -124,7 +162,7 @@ class ChargePointMetric(RestoreSensor, SensorEntity):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self.central_system.get_extra_attr(self.cp_id, self.metric)
+        return self.central_system.get_extra_attr(self.connector, self.metric)
 
     @property
     def state_class(self):
@@ -179,7 +217,7 @@ class ChargePointMetric(RestoreSensor, SensorEntity):
     @property
     def native_value(self):
         """Return the state of the sensor, rounding if a number."""
-        value = self.central_system.get_metric(self.cp_id, self.metric)
+        value = self.central_system.get_metric(self.connector, self.metric)
         if value is not None:
             self._attr_native_value = value
         return self._attr_native_value
@@ -187,7 +225,7 @@ class ChargePointMetric(RestoreSensor, SensorEntity):
     @property
     def native_unit_of_measurement(self):
         """Return the native unit of measurement."""
-        value = self.central_system.get_ha_unit(self.cp_id, self.metric)
+        value = self.central_system.get_ha_unit(self.connector, self.metric)
         if value is not None:
             self._attr_native_unit_of_measurement = value
         else:

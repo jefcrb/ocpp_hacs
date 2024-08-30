@@ -1,4 +1,5 @@
 """Define constants for OCPP integration."""
+
 import pathlib
 
 import homeassistant.components.input_number as input_number
@@ -9,6 +10,7 @@ from ocpp.v16.enums import Measurand, UnitOfMeasure
 
 CONF_AUTH_LIST = "authorization_list"
 CONF_AUTH_STATUS = "authorization_status"
+CONF_CONN_NAME = "charger"
 CONF_CPI = "charge_point_identity"
 CONF_CPID = "cpid"
 CONF_CSID = "csid"
@@ -22,6 +24,7 @@ CONF_METER_INTERVAL = "meter_interval"
 CONF_MODE = ha.CONF_MODE
 CONF_MONITORED_VARIABLES = ha.CONF_MONITORED_VARIABLES
 CONF_NAME = ha.CONF_NAME
+CONF_NO_OF_CONNECTORS = "no_of_connectors"
 CONF_PASSWORD = ha.CONF_PASSWORD
 CONF_PORT = ha.CONF_PORT
 CONF_SKIP_SCHEMA_VALIDATION = "skip_schema_validation"
@@ -38,10 +41,12 @@ CONF_WEBSOCKET_PING_TRIES = "websocket_ping_tries"
 CONF_WEBSOCKET_PING_INTERVAL = "websocket_ping_interval"
 CONF_WEBSOCKET_PING_TIMEOUT = "websocket_ping_timeout"
 DATA_UPDATED = "ocpp_data_updated"
+DEFAULT_CONN_NAME = "charger"
 DEFAULT_CSID = "central"
 DEFAULT_CPID = "charger"
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_MAX_CURRENT = 32
+DEFAULT_MAX_POWER = 22000
 DEFAULT_PORT = 9000
 DEFAULT_SKIP_SCHEMA_VALIDATION = False
 DEFAULT_FORCE_SMART_CHARGING = False
@@ -50,6 +55,7 @@ DEFAULT_SSL_CERTFILE_PATH = pathlib.Path.cwd().joinpath("fullchain.pem")
 DEFAULT_SSL_KEYFILE_PATH = pathlib.Path.cwd().joinpath("privkey.pem")
 DEFAULT_SUBPROTOCOL = "ocpp1.6"
 DEFAULT_METER_INTERVAL = 60
+DEFAULT_NO_OF_CONNECTORS = 1
 DEFAULT_IDLE_INTERVAL = 900
 DEFAULT_WEBSOCKET_CLOSE_TIMEOUT = 10
 DEFAULT_WEBSOCKET_PING_TRIES = 2
@@ -129,3 +135,13 @@ DEFAULT_CLASS_UNITS_HA = {
     SensorDeviceClass.POWER: ha.UnitOfPower.KILO_WATT,
     SensorDeviceClass.ENERGY: ha.UnitOfEnergy.KILO_WATT_HOUR,
 }
+
+# The measurands that belong to a specific connector
+CONNECTOR_SENSORS = [
+    Measurand.energy_active_import_register.value,
+    Measurand.energy_active_import_interval.value,
+    Measurand.power_active_import.value,
+    Measurand.current_import.value,
+    Measurand.current_offered.value,
+    Measurand.voltage.value,
+]
