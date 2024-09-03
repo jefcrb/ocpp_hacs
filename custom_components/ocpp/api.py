@@ -22,7 +22,7 @@ import websockets.protocol
 import websockets.server
 
 from ocpp.exceptions import NotImplementedError
-from ocpp.messages import CallError
+from ocpp.messages import CallError, Call
 from ocpp.routing import on
 from ocpp.v16 import ChargePoint as cp, call, call_result
 from ocpp.v16.enums import (
@@ -57,6 +57,7 @@ from .const import (
     CONF_CPID,
     CONF_CSID,
     CONF_DEFAULT_AUTH_STATUS,
+    CONF_EXTERNAL_URL,
     CONF_FORCE_SMART_CHARGING,
     CONF_HOST,
     CONF_ID_TAG,
@@ -79,6 +80,7 @@ from .const import (
     DEFAULT_CPID,
     DEFAULT_CSID,
     DEFAULT_ENERGY_UNIT,
+    DEFAULT_EXTERNAL_URL,
     DEFAULT_FORCE_SMART_CHARGING,
     DEFAULT_HOST,
     DEFAULT_IDLE_INTERVAL,
@@ -201,6 +203,9 @@ class CentralSystem:
             )
         else:
             self.ssl_context = None
+        self.message_forwarder = MessageForwarder(
+            entry.data.get(CONF_EXTERNAL_URL, DEFAULT_EXTERNAL_URL), entry
+        )
 
     @staticmethod
     async def create(hass: HomeAssistant, entry: ConfigEntry):
@@ -224,6 +229,9 @@ class CentralSystem:
         self, websocket: websockets.server.WebSocketServerProtocol, path: str
     ):
         """Request handler executed for every new OCPP connection."""
+        if CONF_EXTERNAL_URL != DEFAULT_EXTERNAL_URL:
+            await self.message_forwarder.connect()
+
         if self.config.get(CONF_SKIP_SCHEMA_VALIDATION, DEFAULT_SKIP_SCHEMA_VALIDATION):
             _LOGGER.warning("Skipping websocket subprotocol validation")
         else:
@@ -239,6 +247,7 @@ class CentralSystem:
                     websocket.available_subprotocols,
                     websocket.request_headers.get("Sec-WebSocket-Protocol", ""),
                 )
+                await self.message_forwarder.close()
                 return await websocket.close()
 
         _LOGGER.info(f"Charger websocket path={path}")
@@ -483,6 +492,8 @@ class ChargePoint(cp):
                 self,
                 connector_no,
             )
+
+        self.message_forwarder = self.central.message_forwarder
 
     async def post_connect(self):
         """Logic to be executed right after a charger connects."""
@@ -1126,12 +1137,18 @@ class ChargePoint(cp):
                 else:
                     continue
 
+    async def _send(self, message):
+        await super()._send(message)
+        await self.message_forwarder.forward_message(message)
+
     async def _handle_call(self, msg):
         try:
             await super()._handle_call(msg)
+            await self.message_forwarder.forward_message(msg)
         except NotImplementedError as e:
             response = msg.create_call_error(e).to_json()
             await self._send(response)
+            await self.message_forwarder.forward_message(response)
 
     async def start(self):
         """Start charge point."""
@@ -1454,7 +1471,7 @@ class ChargePoint(cp):
                 ].value = float(
                     self.get_connector(connector_id)._metrics[DEFAULT_MEASURAND].value
                     or 0
-                ) - float(self._metrics[csess.meter_start.value].value)
+                ) - float(self._metrics[csess.meter_start.value].value or 0)
                 self.get_connector(connector_id)._metrics[
                     csess.session_energy.value
                 ].extra_attr[cstat.id_tag.name] = self._metrics[
@@ -1950,3 +1967,40 @@ class Metric:
     def extra_attr(self, extra_attr: dict):
         """Set the unit of the metric."""
         self._extra_attr = extra_attr
+
+
+class MessageForwarder:
+    def __init__(self, target_uri, entry):
+        self.target_uri = target_uri
+        self.websocket = None
+        self.subprotocols = ["ocpp1.6"]
+
+    async def connect(self):
+        self.websocket = await websockets.connect(
+            f"{self.target_uri}/CWL-AC44-00033", subprotocols=self.subprotocols
+        )
+        asyncio.create_task(self.listen_for_responses())
+
+    async def forward_message(self, message):
+        if self.websocket is None:
+            await self.connect()
+
+        if isinstance(message, Call):
+            return
+
+        _LOGGER.info(f"FORWARDING: {message}")
+        await self.websocket.send(message)
+
+    async def listen_for_responses(self):
+        """Listen for messages coming back from the external URL and log them."""
+        try:
+            async for response in self.websocket:
+                _LOGGER.info(f"RECEIVED FROM EXTERNAL URL: {response}")
+        except websockets.exceptions.ConnectionClosed:
+            _LOGGER.warning("Connection closed by the external URL.")
+        except Exception as e:
+            _LOGGER.error(f"Error while receiving message: {e}")
+
+    async def close(self):
+        if self.websocket:
+            await self.websocket.close()

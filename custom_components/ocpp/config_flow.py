@@ -7,6 +7,7 @@ from .const import (
     CONF_CONN_NAME,
     CONF_CPID,
     CONF_CSID,
+    CONF_EXTERNAL_URL,
     CONF_FORCE_SMART_CHARGING,
     CONF_HOST,
     CONF_IDLE_INTERVAL,
@@ -26,6 +27,7 @@ from .const import (
     DEFAULT_CONN_NAME,
     DEFAULT_CPID,
     DEFAULT_CSID,
+    DEFAULT_EXTERNAL_URL,
     DEFAULT_FORCE_SMART_CHARGING,
     DEFAULT_HOST,
     DEFAULT_IDLE_INTERVAL,
@@ -49,6 +51,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_CONN_NAME, default=DEFAULT_CONN_NAME): str,
         vol.Required(CONF_NO_OF_CONNECTORS, default=DEFAULT_NO_OF_CONNECTORS): int,
+        vol.Required(CONF_EXTERNAL_URL, DEFAULT_EXTERNAL_URL): str,
         vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
         vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
         vol.Required(CONF_SSL, default=DEFAULT_SSL): bool,
