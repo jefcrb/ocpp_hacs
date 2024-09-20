@@ -54,7 +54,7 @@ class OcppSensorDescription(SensorEntityDescription):
 
 async def async_setup_entry(hass, entry, async_add_devices):
     """Configure the sensor platform."""
-    central_system = hass.data[DOMAIN][entry.entry_id]
+    central_system = hass.data[DOMAIN][entry.entry_id]["central_sys"]
     cp_id = entry.data.get(CONF_CPID, DEFAULT_CPID)
     conn_prefix = entry.data.get(CONF_CONN_NAME, DEFAULT_CONN_NAME)
     number_of_connectors = entry.data.get(

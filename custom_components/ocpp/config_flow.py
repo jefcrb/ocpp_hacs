@@ -10,6 +10,8 @@ from .const import (
     CONF_EXTERNAL_URL,
     CONF_FORCE_SMART_CHARGING,
     CONF_HOST,
+    CONF_HTTP_API_ENABLED,
+    CONF_HTTP_API_PORT,
     CONF_IDLE_INTERVAL,
     CONF_MAX_CURRENT,
     CONF_METER_INTERVAL,
@@ -30,6 +32,8 @@ from .const import (
     DEFAULT_EXTERNAL_URL,
     DEFAULT_FORCE_SMART_CHARGING,
     DEFAULT_HOST,
+    DEFAULT_HTTP_API_ENABLED,
+    DEFAULT_HTTP_API_PORT,
     DEFAULT_IDLE_INTERVAL,
     DEFAULT_MAX_CURRENT,
     DEFAULT_METER_INTERVAL,
@@ -51,7 +55,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_CONN_NAME, default=DEFAULT_CONN_NAME): str,
         vol.Required(CONF_NO_OF_CONNECTORS, default=DEFAULT_NO_OF_CONNECTORS): int,
-        vol.Required(CONF_EXTERNAL_URL, DEFAULT_EXTERNAL_URL): str,
+        vol.Required(CONF_EXTERNAL_URL, default=DEFAULT_EXTERNAL_URL): str,
         vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
         vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
         vol.Required(CONF_SSL, default=DEFAULT_SSL): bool,
@@ -77,6 +81,8 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(
             CONF_WEBSOCKET_PING_TIMEOUT, default=DEFAULT_WEBSOCKET_PING_TIMEOUT
         ): int,
+        vol.Required(CONF_HTTP_API_ENABLED, default=DEFAULT_HTTP_API_ENABLED): bool,
+        vol.Required(CONF_HTTP_API_PORT, default=DEFAULT_HTTP_API_PORT): int,
         vol.Required(
             CONF_SKIP_SCHEMA_VALIDATION, default=DEFAULT_SKIP_SCHEMA_VALIDATION
         ): bool,

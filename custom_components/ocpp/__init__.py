@@ -11,17 +11,22 @@ import voluptuous as vol
 from ocpp.v16.enums import AuthorizationStatus
 
 from .api import CentralSystem
+from .http_api import APIServer
 from .const import (
     CONF_AUTH_LIST,
     CONF_AUTH_STATUS,
     CONF_CPID,
     CONF_CSID,
     CONF_DEFAULT_AUTH_STATUS,
+    CONF_HTTP_API_ENABLED,
+    CONF_HTTP_API_PORT,
     CONF_ID_TAG,
     CONF_NAME,
     CONFIG,
     DEFAULT_CPID,
     DEFAULT_CSID,
+    DEFAULT_HTTP_API_ENABLED,
+    DEFAULT_HTTP_API_PORT,
     DOMAIN,
     PLATFORMS,
 )
@@ -68,10 +73,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         _LOGGER.info(entry.data)
 
     central_sys = await CentralSystem.create(hass, entry)
+    http_api_enabled = entry.data.get(CONF_HTTP_API_ENABLED, DEFAULT_HTTP_API_ENABLED)
+
+    # Initialize and start the API server
+    if http_api_enabled:
+        http_api_port = entry.data.get(CONF_HTTP_API_PORT, DEFAULT_HTTP_API_PORT)
+        api_server = APIServer(hass, entry, central_sys, http_api_port)
+        hass.loop.create_task(api_server.start())
 
     dr = device_registry.async_get(hass)
 
-    """ Create Central System Device """
     dr.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, entry.data.get(CONF_CSID, DEFAULT_CSID))},
@@ -88,7 +99,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         via_device=((DOMAIN), central_sys.id),
     )
 
-    hass.data[DOMAIN][entry.entry_id] = central_sys
+    if http_api_enabled:
+        hass.data[DOMAIN][entry.entry_id] = {
+            "central_sys": central_sys,
+            "api_server": api_server,
+        }
+    else:
+        hass.data[DOMAIN][entry.entry_id] = {"central_sys": central_sys}
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -101,9 +118,19 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unloaded = False
     if DOMAIN in hass.data:
         if entry.entry_id in hass.data[DOMAIN]:
-            central_sys = hass.data[DOMAIN][entry.entry_id]
+            data = hass.data[DOMAIN][entry.entry_id]
+            central_sys = data["central_sys"]
+            api_server = data.get("api_server", None)
+
+            # Close the central system's server
             central_sys._server.close()
             await central_sys._server.wait_closed()
+
+            # Stop the API server
+            if api_server:
+                await api_server.stop()
+
+            # Unload platforms
             unloaded = await hass.config_entries.async_unload_platforms(
                 entry, PLATFORMS
             )
@@ -116,4 +143,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry."""
     await hass.config_entries.async_reload(entry.entry_id)
-    

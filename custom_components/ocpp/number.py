@@ -71,7 +71,7 @@ NUMBERS: Final = [
 
 async def async_setup_entry(hass, entry, async_add_devices):
     """Configure the sensor platform."""
-    central_system = hass.data[DOMAIN][entry.entry_id]
+    central_system = hass.data[DOMAIN][entry.entry_id]["central_sys"]
     no_of_connectors = entry.data.get(CONF_NO_OF_CONNECTORS, DEFAULT_NO_OF_CONNECTORS)
     cp_name = entry.data.get(CONF_CONN_NAME, DEFAULT_CONN_NAME)
 
